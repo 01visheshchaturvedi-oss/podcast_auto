@@ -1,21 +1,5 @@
-JSON
 {
-<<<<<<< HEAD
-  "name": "Aakashvani Podcast Environment",
-  
-  // Installs system dependencies (like FFmpeg for pydub) during container creation
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y ffmpeg python3.13-venv",
-
-  // Installs Python packages directly into the auto-created .venv upon startup
-  "postStartCommand": "if [ -d \".venv\" ]; then .venv/bin/python -m pip install --upgrade pip && .venv/bin/python -m pip install pydub; fi",
-
-  "customizations": {
-    "vscode": {
-      "settings": {
-        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
-      }
-=======
-    "name": "Aakashvani v2 — Hindi Podcast Generator",
+    "name": "Aakashvani v2 - Hindi Podcast Generator",
     "image": "mcr.microsoft.com/devcontainers/python:3.11",
     "postCreateCommand": [
         "sudo apt-get update && sudo apt-get install -y ffmpeg && bash scripts/setup_music.sh"
@@ -33,7 +17,5 @@ JSON
                 "python.terminal.activateEnvInCurrentTerminal": true
             }
         }
->>>>>>> 45cae37 (fix devcontainer: no ghcr features, .venv deps via postStartCommand only)
     }
-  }
 }
