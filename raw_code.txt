@@ -1,0 +1,238 @@
+
+# ╔══════════════════════════════════════════════════════════════╗
+# ║        🎙️ HINDI PODCAST GENERATOR — ONE CELL COLAB          ║
+# ║     Copy this entire code → Paste in Colab → Run            ║
+# ╚══════════════════════════════════════════════════════════════╝
+# FIXES in this version:
+#   ✅ Male:/Female: prefix is PARSED (not spoken aloud)
+#   ✅ Correct voice assigned per line automatically
+#   ✅ Smooth crossfade transition between speakers
+#   ✅ NO role name ever reaches TTS engine
+
+# ── Install ────────────────────────────────────────────────────
+import subprocess, sys
+print("📦 Installing packages...")
+for pkg in ["edge-tts", "pydub", "nest_asyncio"]:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", pkg, "-q"],
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+print("✅ Ready!\n")
+
+# ── Imports ────────────────────────────────────────────────────
+import edge_tts, asyncio, nest_asyncio, os, re
+import IPython.display as ipd
+from pydub import AudioSegment
+from pydub.effects import normalize
+
+nest_asyncio.apply()
+
+# ── Voices ─────────────────────────────────────────────────────
+FEMALE_VOICE = "hi-IN-SwaraNeural"
+MALE_VOICE   = "hi-IN-MadhurNeural"
+
+MODES = {
+    "1": {"label": "Revision (+15% speed)", "female": "+15%", "male": "+5%"},
+    "2": {"label": "Learn   (-10% speed)",  "female": "-10%", "male": "-15%"},
+}
+
+OUT = "podcast_output"
+os.makedirs(OUT, exist_ok=True)
+
+# ── Text cleaner ───────────────────────────────────────────────
+def clean(text):
+    # ✅ FIX 1: Strip any Male:/Female:/male:/female: prefix before TTS
+    text = re.sub(r'^(male|female|पुरुष|महिला)\s*:\s*', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r'[&<>"\']', '', text)
+    return re.sub(r'\s+', ' ', text).strip()
+
+def split_sentences(text):
+    return [s.strip() for s in re.split(r'(?<=[।.!?])\s+', text) if s.strip()]
+
+def silence(ms):
+    return AudioSegment.silent(duration=ms)
+
+# ── Script parser: reads Male:/Female: prefixed lines ──────────
+def parse_script(raw_text):
+    """
+    Parses Male:/Female: prefixed text into script turns.
+    Handles BOTH formats:
+      - One label per line:   Male: नमस्कार...\\nFemale: आज के...
+      - All on one line:      Male: नमस्कार...  Female: आज के...
+    Role label is NEVER passed to TTS engine.
+    """
+    # ✅ KEY FIX: split on Male:/Female: wherever they appear —
+    #    even if the entire script was pasted on one line.
+    #    re.split with a capture group keeps the delimiter in results.
+    parts = re.split(r'((?:male|female|पुरुष|महिला)\s*:)', raw_text, flags=re.IGNORECASE)
+
+    script = []
+    i = 1  # parts[0] is text before first label (usually empty)
+    while i < len(parts) - 1:
+        label = parts[i].strip().rstrip(':').lower()
+        text  = parts[i + 1].strip() if i + 1 < len(parts) else ""
+        # Clean up any trailing role label accidentally included
+        text  = re.split(r'(?:male|female|पुरुष|महिला)\s*:', text, flags=re.IGNORECASE)[0].strip()
+        role  = "male" if label in ("male", "पुरुष") else "female"
+        if text:
+            script.append({"role": role, "text": text})
+        i += 2
+
+    return script
+
+# ── TTS (plain text, NO SSML) ──────────────────────────────────
+async def tts(text, path, voice, rate):
+    text = clean(text)
+    if not text:
+        return False
+    await edge_tts.Communicate(text=text, voice=voice, rate=rate).save(path)
+    return True
+
+# ── Smooth transition helper ───────────────────────────────────
+def smooth_join(clip_a, clip_b, fade_ms=80):
+    """
+    ✅ FIX 3: Fade-out end of clip_a + fade-in start of clip_b
+    Removes the abrupt hard cut between speakers.
+    """
+    a = clip_a.fade_out(fade_ms)
+    b = clip_b.fade_in(fade_ms)
+    return a + b
+
+# ── Builder ────────────────────────────────────────────────────
+async def build(script, name, rates):
+    clips   = []   # list of (role, AudioSegment)
+    temps   = []
+    print(f"\n🎙️  Generating {len(script)} segments...\n")
+
+    for i, item in enumerate(script):
+        role  = item["role"]
+        text  = item["text"].strip()
+        if not text:
+            continue
+
+        voice = FEMALE_VOICE if role == "female" else MALE_VOICE
+        rate  = rates["female"] if role == "female" else rates["male"]
+        icon  = "👩" if role == "female" else "👨"
+
+        print(f"  {icon} [{i+1}/{len(script)}] ({role.upper()}) {text[:55]}...")
+
+        segment_audio = AudioSegment.empty()
+        sents = split_sentences(text)
+
+        for j, sent in enumerate(sents):
+            tmp = f"{OUT}/_t{i}_{j}.mp3"
+            temps.append(tmp)
+            ok = await tts(sent, tmp, voice, rate)
+            if not ok or not os.path.exists(tmp):
+                continue
+            clip = AudioSegment.from_mp3(tmp)
+            # Breath pause between sentences within same speaker
+            if j < len(sents) - 1:
+                segment_audio += clip + silence(420)
+            else:
+                segment_audio += clip
+
+        if len(segment_audio) > 0:
+            clips.append((role, segment_audio))
+
+    # ── Merge with smooth transitions ─────────────────────────
+    if not clips:
+        print("❌ No audio generated.")
+        return None
+
+    final = clips[0][1]
+    for i in range(1, len(clips)):
+        prev_role = clips[i-1][0]
+        curr_role = clips[i][0]
+        curr_clip = clips[i][1]
+
+        if prev_role != curr_role:
+            # ✅ Speaker switch: 450ms gap + crossfade (smooth, not jarring)
+            gap = silence(450)
+            final = smooth_join(final + gap, curr_clip, fade_ms=60)
+        else:
+            # Same speaker continues: short 300ms breath
+            final = final + silence(300) + curr_clip
+
+    final = normalize(final)
+    out   = f"{OUT}/{name}.mp3"
+    final.export(out, format="mp3", bitrate="192k")
+
+    for f in temps:
+        try: os.remove(f)
+        except: pass
+
+    print(f"\n✅ Done! Duration: {len(final)/1000:.1f}s ({len(final)/60000:.1f} min)")
+    return out
+
+# ── Main ───────────────────────────────────────────────────────
+async def main():
+    print("=" * 54)
+    print("   🎙️  HINDI CURRENT AFFAIRS PODCAST GENERATOR")
+    print("=" * 54)
+
+    # Mode
+    print("\n⚡ Select Mode:")
+    print("   1 → Revision  (fast +15%)")
+    print("   2 → Learn     (slow -10%)")
+    mode_key = input("\n   Choice (1/2) [default 1]: ").strip() or "1"
+    if mode_key not in MODES: mode_key = "1"
+    rates = MODES[mode_key]
+    print(f"   ✅ {rates['label']}")
+
+    # Input format
+    print("\n📋 Paste Format:")
+    print("   1 → With Male:/Female: labels  (you control who speaks)")
+    print("   2 → Plain notes               (auto alternate voices)")
+    fmt = input("\n   Choice (1/2) [default 1]: ").strip() or "1"
+
+    # Notes input
+    # ✅ Works for both: all-on-one-line paste OR multi-line paste.
+    #    Press Enter on a blank line to finish.
+    print("\n📝 Paste your notes below.")
+    print("   → Male:/Female: labels can be on separate lines OR on one line.")
+    print("   → Press Enter on a blank line when done.\n")
+    lines = []
+    while True:
+        try:
+            line = input()
+        except EOFError:
+            break
+        if line.strip() == "" and lines:
+            break
+        if line.strip():
+            lines.append(line.strip())
+    raw = "\n".join(lines).strip()
+
+    if not raw:
+        print("❌ No input received.")
+        return
+
+    # Parse script
+    if fmt == "1":
+        script = parse_script(raw)
+    else:
+        # Plain notes → add intro/outro + alternate voices
+        sents = split_sentences(raw)
+        script = [{"role": "male", "text": "नमस्ते! आज के करंट अफेयर्स रिवीजन में आपका स्वागत है।"}]
+        for i in range(0, len(sents), 3):
+            chunk = " ".join(sents[i:i+3])
+            script.append({"role": "female" if (i//3) % 2 == 0 else "male", "text": chunk})
+        script.append({"role": "male", "text": "यह था आज का रिवीजन। धन्यवाद!"})
+
+    print(f"\n   📌 Parsed {len(script)} speaker turns:")
+    for s in script:
+        icon = "👩" if s["role"] == "female" else "👨"
+        print(f"   {icon} {s['role'].upper()}: {s['text'][:50]}...")
+
+    name = input("\n💾 Output filename (no .mp3) [default: podcast]: ").strip() or "podcast"
+
+    # Build
+    out_path = await build(script, name, rates)
+    if not out_path:
+        return
+
+    # ✅ Play directly in Colab — no download needed
+    print("\n🔊 Playing in Colab ↓")
+    ipd.display(ipd.Audio(out_path, autoplay=True))
+
+asyncio.get_event_loop().run_until_complete(main())

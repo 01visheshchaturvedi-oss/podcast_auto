@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Output audio
+podcast_output/
+
+# Temp audio
+tmp_*.wav
+tmp_*.mp3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Env
+.env
+venv/
+.venv/
+
+# Temp
+*.tmp
+*.log
