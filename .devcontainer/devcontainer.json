@@ -2,6 +2,7 @@
     "name": "Aakashvani v2 — Hindi Podcast Generator",
     "image": "mcr.microsoft.com/devcontainers/python:3.11",
     "postCreateCommand": "sudo apt-get update && sudo apt-get install -y ffmpeg && pip install --no-cache-dir edge-tts pydub gtts numpy && bash scripts/setup_music.sh",
+    "postStartCommand": "[ -d .venv ] && .venv/bin/pip install -q edge-tts pydub gtts numpy 2>/dev/null; true",
     "customizations": {
         "vscode": {
             "settings": {
