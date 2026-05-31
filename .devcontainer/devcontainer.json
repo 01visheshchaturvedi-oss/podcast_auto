@@ -1,18 +1,21 @@
-JSON
 {
-  "name": "Aakashvani Podcast Environment",
-  
-  // Installs system dependencies (like FFmpeg for pydub) during container creation
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y ffmpeg python3.13-venv",
-
-  // Installs Python packages directly into the auto-created .venv upon startup
-  "postStartCommand": "if [ -d \".venv\" ]; then .venv/bin/python -m pip install --upgrade pip && .venv/bin/python -m pip install pydub; fi",
-
-  "customizations": {
-    "vscode": {
-      "settings": {
-        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
-      }
+    "name": "Aakashvani v2 — Hindi Podcast Generator",
+    "image": "mcr.microsoft.com/devcontainers/python:3.11",
+    "postCreateCommand": [
+        "sudo apt-get update && sudo apt-get install -y ffmpeg && bash scripts/setup_music.sh"
+    ],
+    "postStartCommand": [
+        ".venv/bin/pip install --no-cache-dir edge-tts pydub gtts numpy"
+    ],
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "files.encoding": "utf8",
+                "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+                "python.terminal.activateEnvironment": true,
+                "python.terminal.activateEnvInCurrentTerminal": true
+            }
+        }
     }
-  }
 }
