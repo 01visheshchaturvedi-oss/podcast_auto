@@ -4,19 +4,15 @@
     "features": {
         "ghcr.io/devcontainers/features/ffmpeg:1": {}
     },
-    "postCreateCommand": "pip install --no-cache-dir edge-tts pydub gtts && python3 -c \"import edge_tts, pydub; print('✅ All deps installed')\"",
+    "postCreateCommand": "pip install --no-cache-dir edge-tts pydub gtts",
     "customizations": {
         "vscode": {
             "extensions": [
-                "ms-python.python",
-                "ms-python.vscode-pylance"
+                "ms-python.python"
             ],
             "settings": {
                 "python.defaultInterpreterPath": "/usr/local/bin/python3"
             }
         }
-    },
-    "mounts": [
-        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-    ]
+    }
 }
