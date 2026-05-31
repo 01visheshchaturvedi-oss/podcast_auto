@@ -1,10 +1,7 @@
 {
     "name": "Podcast AI Generator",
     "image": "mcr.microsoft.com/devcontainers/python:3.11",
-    "features": {
-        "ghcr.io/devcontainers/features/ffmpeg:1": {}
-    },
-    "postCreateCommand": "pip install --no-cache-dir edge-tts pydub gtts",
+    "postCreateCommand": "sudo apt-get update && sudo apt-get install -y ffmpeg && pip install --no-cache-dir edge-tts pydub gtts",
     "customizations": {
         "vscode": {
             "extensions": [
