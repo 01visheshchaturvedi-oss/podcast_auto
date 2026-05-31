@@ -1,6 +1,11 @@
 {
-    "name": "Aakashvani v2 - Hindi Podcast Generator",
+    "name": "Aakashvani v2 — Hindi Podcast Generator",
     "image": "mcr.microsoft.com/devcontainers/python:3.11",
+    "features": {
+        "ghcr.io/devcontainers/features/sshd:1": {
+            "version": "latest"
+        }
+    },
     "postCreateCommand": [
         "sudo apt-get update && sudo apt-get install -y ffmpeg && bash scripts/setup_music.sh"
     ],
