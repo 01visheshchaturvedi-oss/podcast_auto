@@ -29,3 +29,8 @@ venv/
 # Temp
 *.tmp
 *.log
+_test_*.mp3
+_test_*.xml
+_ref_temp.wav
+_interactive_script.txt
+_temp/

@@ -1,14 +1,12 @@
 {
-    "name": "Podcast AI Generator",
+    "name": "Aakashvani v2 — Hindi Podcast Generator",
     "image": "mcr.microsoft.com/devcontainers/python:3.11",
-    "postCreateCommand": "sudo apt-get update && sudo apt-get install -y ffmpeg && pip install --no-cache-dir edge-tts pydub gtts",
+    "postCreateCommand": "sudo apt-get update && sudo apt-get install -y ffmpeg && pip install --no-cache-dir edge-tts pydub gtts numpy && bash scripts/setup_music.sh",
     "customizations": {
         "vscode": {
-            "extensions": [
-                "ms-python.python"
-            ],
             "settings": {
-                "python.defaultInterpreterPath": "/usr/local/bin/python3"
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "files.encoding": "utf8"
             }
         }
     }
