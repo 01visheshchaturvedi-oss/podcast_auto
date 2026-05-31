@@ -7,7 +7,7 @@
         }
     },
     "postCreateCommand": [
-        "sudo apt-get update && sudo apt-get install -y ffmpeg && bash scripts/setup_music.sh"
+        "sudo apt-get update && sudo apt-get install -y ffmpeg && python3 -m venv .venv && bash scripts/setup_music.sh"
     ],
     "postStartCommand": [
         ".venv/bin/pip install --no-cache-dir edge-tts pydub gtts numpy"
